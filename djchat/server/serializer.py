@@ -4,49 +4,99 @@ from rest_framework import serializers
 from .models import Category, Channel, Server
 
 
-# Serializer pour le modèle Category
 class CategorySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Category  # Modèle à sérialiser
-        fields = ['id', 'name']  # Champs à inclure dans la sérialisation
+    """Sérialiseur pour le modèle Category.
 
-# Serializer pour le modèle Channel
+    Ce sérialiseur gère la conversion des instances du modèle Category
+    vers et depuis le format JSON.
+
+    Attributs:
+        Meta: Classe de configuration pour le sérialiseur.
+    """
+
+    class Meta:
+        model = Category
+        fields = ['id', 'name']
+
 class ChannelSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Channel  # Modèle à sérialiser
-        fields = '__all__'  # Inclure tous les champs du modèle
+    """Sérialiseur pour le modèle Channel.
 
-# Serializer pour le modèle User (utilisateur)
+    Ce sérialiseur gère la conversion des instances du modèle Channel
+    vers et depuis le format JSON.
+
+    Attributs:
+        Meta: Classe de configuration pour le sérialiseur.
+    """
+
+    class Meta:
+        model = Channel
+        fields = '__all__'
+
 class OwnerSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = settings.AUTH_USER_MODEL  # Modèle utilisateur à partir des paramètres
-        fields = ['id', 'username']  # Champs à inclure dans la sérialisation
+    """Sérialiseur pour le modèle Utilisateur.
 
-# Serializer pour le modèle Server
+    Ce sérialiseur gère la conversion des instances du modèle Utilisateur
+    vers et depuis le format JSON.
+
+    Attributs:
+        Meta: Classe de configuration pour le sérialiseur.
+    """
+
+    class Meta:
+        model = settings.AUTH_USER_MODEL
+        fields = ['id', 'username']
+
 class ServerSerializer(serializers.ModelSerializer):
-    # Champ personnalisé pour le nombre de membres
+    """Sérialiseur pour le modèle Server.
+
+    Ce sérialiseur gère la conversion des instances du modèle Server
+    vers et depuis le format JSON. Il inclut des sérialiseurs imbriqués
+    pour les modèles Category et Channel, ainsi qu'un champ personnalisé
+    pour le nombre de membres.
+
+    Attributs:
+        num_members (SerializerMethodField): Champ personnalisé pour compter le nombre de membres.
+        category (CategorySerializer): Sérialiseur imbriqué pour la catégorie.
+        channel_server (ChannelSerializer): Sérialiseur imbriqué pour les channels.
+    """
+
     num_members = serializers.SerializerMethodField()
-    # Sérialisation imbriquée pour la catégorie
     category = CategorySerializer(read_only=True)
-    # Sérialisation imbriquée pour les channels (nombreux)
     channel_server = ChannelSerializer(read_only=True, many=True)
 
     class Meta:
-        model = Server  # Modèle à sérialiser
-        exclude = ("member",)  # Exclure le champ "member" de la sérialisation
+        model = Server
+        exclude = ("member",)
 
-    # Méthode pour obtenir le nombre de membres
     def get_num_members(self, obj):
+        """Obtient le nombre de membres pour un serveur.
+
+        Args:
+            obj (Server): L'instance du serveur.
+
+        Returns:
+            int ou None: Le nombre de membres s'il est disponible, sinon None.
+        """
         if hasattr(obj, 'num_members'):
             return obj.num_members
         return None
 
-    # Personnalisation de la représentation des données
     def to_representation(self, instance):
+        """Personnalise la représentation de l'instance du serveur.
+
+        Cette méthode personnalise la représentation JSON de l'instance
+        du serveur en excluant éventuellement le champ `num_members` en
+        fonction du contexte.
+
+        Args:
+            instance (Server): L'instance du serveur à représenter.
+
+        Returns:
+            dict: La représentation personnalisée de l'instance du serveur.
+        """
         data = super().to_representation(instance)
         num_members = self.context.get('num_members')
 
-        # Supprimer le champ 'num_members' si non nécessaire
         if not num_members:
             data.pop('num_members')
         
